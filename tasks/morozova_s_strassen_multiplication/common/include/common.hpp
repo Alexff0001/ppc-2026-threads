@@ -17,7 +17,7 @@ struct Matrix {
   std::vector<double> data;
   int size;
 
-  Matrix(int n) : size(n), data(n * n, 0.0) {}
+  Matrix(int n) : data(n * n, 0.0), size(n) {}
 
   double &operator()(int i, int j) {
     return data[i * size + j];

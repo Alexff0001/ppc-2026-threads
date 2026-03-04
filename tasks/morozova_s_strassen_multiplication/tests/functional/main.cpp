@@ -27,10 +27,7 @@ class MorozovaSStrassenMultiplicationFuncTests : public ppc::util::BaseRunFuncTe
   }
 
   bool CheckTestOutputData(OutType &output_data) override {
-    if (test_number_ == 6) {
-      return output_data.empty();
-    }
-    if (test_number_ == 7) {
+    if (test_number_ == 6 || test_number_ == 7) {
       return output_data.empty();
     }
     return ValidateMultiplicationResult(output_data);
@@ -162,7 +159,7 @@ class MorozovaSStrassenMultiplicationFuncTests : public ppc::util::BaseRunFuncTe
     return CompareMatrices(output_data, expected, n);
   }
 
-  Matrix ExtractMatrixA(int n) const {
+  [[nodiscard]] Matrix ExtractMatrixA(int n) const {
     Matrix a(n);
     int idx = 1;
     for (int i = 0; i < n; ++i) {
@@ -173,7 +170,7 @@ class MorozovaSStrassenMultiplicationFuncTests : public ppc::util::BaseRunFuncTe
     return a;
   }
 
-  Matrix ExtractMatrixB(int n) const {
+  [[nodiscard]] Matrix ExtractMatrixB(int n) const {
     Matrix b(n);
     int idx = 1 + (n * n);
     for (int i = 0; i < n; ++i) {

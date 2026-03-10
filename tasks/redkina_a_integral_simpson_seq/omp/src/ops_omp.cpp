@@ -2,6 +2,7 @@
 
 #include <omp.h>
 
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <functional>
@@ -13,6 +14,8 @@ namespace redkina_a_integral_simpson_seq {
 
 namespace {
 
+constexpr size_t kMaxDim = 10;  // Максимальная поддерживаемая размерность
+
 inline int SimpsonCoeff(int idx, int n) {
   if (idx == 0 || idx == n) {
     return 1;
@@ -20,17 +23,17 @@ inline int SimpsonCoeff(int idx, int n) {
   return (idx % 2 == 1) ? 4 : 2;
 }
 
-bool AdvanceIndicesFromLevel(std::vector<int> &indices, const std::vector<int> &n, int start_level) {
-  int dim = static_cast<int>(indices.size());
-  int d = dim - 1;
-  while (d >= start_level && indices[d] == n[d]) {
-    indices[d] = 0;
+bool AdvanceIndicesFromLevel(std::array<int, kMaxDim> &indices, const std::vector<int> &n, int start_level,
+                             size_t dim) {
+  int d = static_cast<int>(dim) - 1;
+  while (d >= start_level && indices[static_cast<size_t>(d)] == n[static_cast<size_t>(d)]) {
+    indices[static_cast<size_t>(d)] = 0;
     --d;
   }
   if (d < start_level) {
     return false;
   }
-  ++indices[d];
+  ++indices[static_cast<size_t>(d)];
   return true;
 }
 
@@ -39,6 +42,9 @@ bool AdvanceIndicesFromLevel(std::vector<int> &indices, const std::vector<int> &
 RedkinaAIntegralSimpsonOMP::RedkinaAIntegralSimpsonOMP(const InType &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
   GetInput() = in;
+  // Инициализация OpenMP (чтобы выделения произошли один раз)
+  static const int dummy = omp_get_max_threads();
+  (void)dummy;
 }
 
 bool RedkinaAIntegralSimpsonOMP::ValidationImpl() {
@@ -47,6 +53,9 @@ bool RedkinaAIntegralSimpsonOMP::ValidationImpl() {
 
   if (dim == 0 || in.b.size() != dim || in.n.size() != dim) {
     return false;
+  }
+  if (dim > kMaxDim) {
+    return false;  // превышена максимальная размерность
   }
 
   for (size_t i = 0; i < dim; ++i) {
@@ -103,29 +112,31 @@ bool RedkinaAIntegralSimpsonOMP::RunImpl() {
     double coeff0 = SimpsonCoeff(i0, static_cast<int>(n_ref[0]));
     double local_sum = 0.0;
 
-    // Защита от возможного нулевого размера (хотя dim всегда > 0)
-    if (dim_local > 0) {
-      std::vector<double> point(dim_local);
-      std::vector<int> indices(dim_local);
-      indices[0] = i0;
+    // Используем статические массивы фиксированного размера
+    std::array<double, kMaxDim> point{};
+    std::array<int, kMaxDim> indices{};
+
+    indices[0] = i0;
+    for (size_t d = 1; d < dim_local; ++d) {
+      indices[d] = 0;
+    }
+
+    do {
+      point[0] = a_ref[0] + static_cast<double>(i0) * h_ref[0];
+
+      double w_prod = 1.0;
       for (size_t d = 1; d < dim_local; ++d) {
-        indices[d] = 0;
+        int idx = indices[d];
+        point[d] = a_ref[d] + static_cast<double>(idx) * h_ref[d];
+        int w = SimpsonCoeff(idx, static_cast<int>(n_ref[d]));
+        w_prod *= static_cast<double>(w);
       }
 
-      do {
-        point[0] = a_ref[0] + static_cast<double>(i0) * h_ref[0];
-
-        double w_prod = 1.0;
-        for (size_t d = 1; d < dim_local; ++d) {
-          int idx = indices[d];
-          point[d] = a_ref[d] + static_cast<double>(idx) * h_ref[d];
-          int w = SimpsonCoeff(idx, static_cast<int>(n_ref[d]));
-          w_prod *= static_cast<double>(w);
-        }
-
-        local_sum += coeff0 * w_prod * func_ref(point);
-      } while (AdvanceIndicesFromLevel(indices, n_ref, 1));
-    }
+      local_sum += coeff0 * w_prod *
+                   func_ref(
+                       // Преобразуем std::array в std::vector для совместимости с сигнатурой func_
+                       std::vector<double>(point.begin(), point.begin() + static_cast<ptrdiff_t>(dim_local)));
+    } while (AdvanceIndicesFromLevel(indices, n_ref, 1, dim_local));
 
     total_sum += local_sum;
   }

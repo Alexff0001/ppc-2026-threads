@@ -1,7 +1,6 @@
 // redkina_a_integral_simpson_seq/omp/include/ops_omp.hpp
 #pragma once
 
-#include <cstddef>
 #include <functional>
 #include <vector>
 

@@ -2,6 +2,7 @@
 
 #include <omp.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <vector>
 
@@ -30,7 +31,7 @@ void ShkrylevaSShellMergeOMP::ShellSort(int left, int right, std::vector<int> &a
   int gap = 1;
 
   while (gap <= sub_array_size / 3) {
-    gap = gap * 3 + 1;
+    gap = (gap * 3) + 1;
   }
 
   for (; gap > 0; gap /= 3) {
@@ -87,7 +88,7 @@ bool ShkrylevaSShellMergeOMP::RunImpl() {
 
   int sub_arr_size = (array_size + num_threads - 1) / num_threads;
 
-#pragma omp parallel
+#pragma omp parallel default(none) shared(arr, array_size, num_threads, sub_arr_size)
   {
     std::vector<int> buffer;
 
@@ -105,7 +106,7 @@ bool ShkrylevaSShellMergeOMP::RunImpl() {
 #pragma omp for schedule(dynamic)
       for (int left = 0; left < array_size; left += 2 * size) {
         int mid = std::min(left + size - 1, array_size - 1);
-        int right = std::min(left + 2 * size - 1, array_size - 1);
+        int right = std::min(left + (2 * size) - 1, array_size - 1);
 
         if (mid < right) {
           Merge(left, mid, right, arr, buffer);

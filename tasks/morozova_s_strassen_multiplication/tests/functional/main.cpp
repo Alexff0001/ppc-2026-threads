@@ -217,7 +217,9 @@ class MorozovaSStrassenMultiplicationFuncTests : public ppc::util::BaseRunFuncTe
   int test_number_{0};
 };
 
-namespace {
+}  // namespace morozova_s_strassen_multiplication
+
+using namespace morozova_s_strassen_multiplication;
 
 using MorozovaSStrassenMultiplicationSEQFuncTests =
     MorozovaSStrassenMultiplicationFuncTests<MorozovaSStrassenMultiplicationSEQ>;
@@ -257,7 +259,3 @@ const auto kPerfTestNameOMP =
 
 INSTANTIATE_TEST_SUITE_P(StrassenMultiplicationOMPTests, MorozovaSStrassenMultiplicationOMPFuncTests, kGtestValuesOMP,
                          kPerfTestNameOMP);
-
-}  // namespace
-
-}  // namespace morozova_s_strassen_multiplication

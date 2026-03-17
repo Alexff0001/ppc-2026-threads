@@ -52,7 +52,10 @@ class MorozovaSStrassenMultiplicationPerfTest : public ppc::util::BaseRunPerfTes
 
 }  // namespace morozova_s_strassen_multiplication
 
-using namespace morozova_s_strassen_multiplication;
+using morozova_s_strassen_multiplication::InType;
+using morozova_s_strassen_multiplication::MorozovaSStrassenMultiplicationOMP;
+using morozova_s_strassen_multiplication::MorozovaSStrassenMultiplicationPerfTest;
+using morozova_s_strassen_multiplication::MorozovaSStrassenMultiplicationSEQ;
 
 using MorozovaSStrassenMultiplicationSEQPerfTest =
     MorozovaSStrassenMultiplicationPerfTest<MorozovaSStrassenMultiplicationSEQ>;

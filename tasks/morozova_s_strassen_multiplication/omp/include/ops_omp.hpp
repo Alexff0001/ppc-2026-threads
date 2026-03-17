@@ -32,7 +32,7 @@ class MorozovaSStrassenMultiplicationOMP : public BaseTask {
   int n_{0};
   bool valid_data_{true};
 
-  static constexpr int MAX_PARALLEL_DEPTH = 2;
+  static constexpr int kMaxParallelDepth = 2;
 };
 
 }  // namespace morozova_s_strassen_multiplication

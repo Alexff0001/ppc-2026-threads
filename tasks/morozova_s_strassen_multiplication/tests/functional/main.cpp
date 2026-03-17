@@ -219,7 +219,11 @@ class MorozovaSStrassenMultiplicationFuncTests : public ppc::util::BaseRunFuncTe
 
 }  // namespace morozova_s_strassen_multiplication
 
-using namespace morozova_s_strassen_multiplication;
+using morozova_s_strassen_multiplication::InType;
+using morozova_s_strassen_multiplication::MorozovaSStrassenMultiplicationFuncTests;
+using morozova_s_strassen_multiplication::MorozovaSStrassenMultiplicationOMP;
+using morozova_s_strassen_multiplication::MorozovaSStrassenMultiplicationSEQ;
+using morozova_s_strassen_multiplication::TestType;
 
 using MorozovaSStrassenMultiplicationSEQFuncTests =
     MorozovaSStrassenMultiplicationFuncTests<MorozovaSStrassenMultiplicationSEQ>;

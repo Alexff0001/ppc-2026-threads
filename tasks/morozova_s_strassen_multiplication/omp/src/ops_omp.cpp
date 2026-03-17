@@ -16,7 +16,7 @@ Matrix AddMatrixImpl(const Matrix &a, const Matrix &b) {
   int n = a.size;
   Matrix result(n);
 
-#pragma omp parallel for collapse(2) schedule(static)
+#pragma omp parallel for default(none) collapse(2) schedule(static) shared(a, b, result, n)
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {
       result(i, j) = a(i, j) + b(i, j);
@@ -30,7 +30,7 @@ Matrix SubtractMatrixImpl(const Matrix &a, const Matrix &b) {
   int n = a.size;
   Matrix result(n);
 
-#pragma omp parallel for collapse(2) schedule(static)
+#pragma omp parallel for default(none) collapse(2) schedule(static) shared(a, b, result, n)
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {
       result(i, j) = a(i, j) - b(i, j);
@@ -44,7 +44,7 @@ Matrix MultiplyStandardImpl(const Matrix &a, const Matrix &b) {
   int n = a.size;
   Matrix result(n);
 
-#pragma omp parallel for collapse(2) schedule(dynamic, 1)
+#pragma omp parallel for default(none) collapse(2) schedule(dynamic, 1) shared(a, b, result, n)
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {
       double sum = 0.0;
@@ -77,7 +77,7 @@ Matrix MergeMatricesImpl(const Matrix &m11, const Matrix &m12, const Matrix &m21
   int n = 2 * half;
   Matrix result(n);
 
-#pragma omp parallel for collapse(2) schedule(static)
+#pragma omp parallel for default(none) collapse(2) schedule(static) shared(m11, m12, m21, m22, result, half)
   for (int i = 0; i < half; ++i) {
     for (int j = 0; j < half; ++j) {
       result(i, j) = m11(i, j);
@@ -94,7 +94,7 @@ Matrix MultiplyStandardParallelImpl(const Matrix &a, const Matrix &b) {
   int n = a.size;
   Matrix result(n);
 
-#pragma omp parallel
+#pragma omp parallel default(none) shared(a, b, result, n)
   {
 #pragma omp for collapse(2) schedule(dynamic, 1)
     for (int i = 0; i < n; ++i) {
@@ -247,10 +247,17 @@ Matrix MorozovaSStrassenMultiplicationOMP::MultiplyStrassenParallel(const Matrix
   SplitMatrix(a, a11, a12, a21, a22);
   SplitMatrix(b, b11, b12, b21, b22);
 
-  Matrix p1, p2, p3, p4, p5, p6, p7;
+  Matrix p1;
+  Matrix p2;
+  Matrix p3;
+  Matrix p4;
+  Matrix p5;
+  Matrix p6;
+  Matrix p7;
 
-  if (depth < MAX_PARALLEL_DEPTH) {
-#pragma omp parallel sections
+  if (depth < kMaxParallelDepth) {
+#pragma omp parallel sections default(none) \
+    shared(a11, a12, a21, a22, b11, b12, b21, b22, leaf_size, depth, p1, p2, p3, p4, p5, p6, p7)
     {
 #pragma omp section
       p1 = MultiplyStrassenParallel(a11, SubtractMatrix(b12, b22), leaf_size, depth + 1);

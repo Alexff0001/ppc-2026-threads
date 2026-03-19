@@ -30,7 +30,6 @@ bool TimurACannonMatrixMultiplicationOMP::PreProcessingImpl() {
   return true;
 }
 
-
 void TimurACannonMatrixMultiplicationOMP::BlockMultiplyAccumulate(const std::vector<std::vector<double>> &a,
                                                                   const std::vector<std::vector<double>> &b,
                                                                   std::vector<std::vector<double>> &c, int b_size) {

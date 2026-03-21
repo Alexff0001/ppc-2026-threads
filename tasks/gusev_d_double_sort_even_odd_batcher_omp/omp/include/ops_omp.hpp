@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gusev_d_double_sort_even_odd_batcher_omp/common/include/common.hpp"
+#include "task/include/task.hpp"
 
 namespace gusev_d_double_sort_even_odd_batcher_omp_task_threads {
 

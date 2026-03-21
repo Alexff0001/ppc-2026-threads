@@ -35,7 +35,8 @@ bool GoriachevaKMultSparseComplexMatrixCcsOMP::PreProcessingImpl() {
 }
 
 bool GoriachevaKMultSparseComplexMatrixCcsOMP::RunImpl() {
-  auto &[a, b] = GetInput();
+  auto &a = std::get<0>(GetInput());
+  auto &b = std::get<1>(GetInput());
   auto &c = GetOutput();
 
   c.rows = a.rows;

@@ -73,8 +73,8 @@ const std::array<TestType, 6> kTestParam = {
     std::make_tuple(InType({{1.0, 1.0}}, {100}, FLinear), 0.0, "Zero_Range")};
 
 const auto kTestTasksList = std::tuple_cat(
-    ppc::util::AddFuncTask<ChernykhSTrapezoidalIntegrationSEQ, InType>(kTestParam, PPC_SETTINGS_example_threads),
-    ppc::util::AddFuncTask<ChernykhSTrapezoidalIntegrationOMP, InType>(kTestParam, PPC_SETTINGS_example_threads));
+    ppc::util::AddFuncTask<ChernykhSTrapezoidalIntegrationSEQ, InType>(kTestParam, PPC_SETTINGS_chernykh_s_trapezoidal_integration),
+    ppc::util::AddFuncTask<ChernykhSTrapezoidalIntegrationOMP, InType>(kTestParam, PPC_SETTINGS_chernykh_s_trapezoidal_integration));
 
 const auto kGtestValues = ppc::util::ExpandToValues(kTestTasksList);
 

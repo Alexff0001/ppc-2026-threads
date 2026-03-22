@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdint>
+#include <vector>
+
 #include "pikhotskiy_r_vertical_gauss_filter/common/include/common.hpp"
 #include "task/include/task.hpp"
 
@@ -17,6 +20,13 @@ class PikhotskiyRVerticalGaussFilterSEQ : public BaseTask {
   bool PreProcessingImpl() override;
   bool RunImpl() override;
   bool PostProcessingImpl() override;
+
+  int width_ = 0;
+  int height_ = 0;
+  int stripe_width_ = 1;
+  std::vector<std::uint8_t> source_;
+  std::vector<int> vertical_buffer_;
+  std::vector<std::uint8_t> result_buffer_;
 };
 
 }  // namespace pikhotskiy_r_vertical_gauss_filter

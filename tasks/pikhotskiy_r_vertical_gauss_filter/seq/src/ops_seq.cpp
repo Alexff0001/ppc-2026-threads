@@ -1,6 +1,6 @@
 #include "pikhotskiy_r_vertical_gauss_filter/seq/include/ops_seq.hpp"
 
-#include <array>
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <utility>
@@ -11,24 +11,25 @@
 namespace pikhotskiy_r_vertical_gauss_filter {
 
 namespace {
-const int kDivider = 16;
-const std::array<std::array<int, 3>, 3> kKernel = {{{1, 2, 1}, {2, 4, 2}, {1, 2, 1}}};
+constexpr int kKernelNorm = 16;
+constexpr int kStripeDivider = 8;
 
-uint8_t GetPixelMirror(const std::vector<uint8_t> &data, int col, int row, int width, int height) {
-  int x = col;
-  int y = row;
+int ClampIndex(int value, int upper_bound) {
+  if (value < 0) {
+    return 0;
+  }
+  if (value >= upper_bound) {
+    return upper_bound - 1;
+  }
+  return value;
+}
 
-  if (x < 0) {
-    x = -x - 1;
-  } else if (x >= width) {
-    x = (2 * width) - x - 1;
-  }
-  if (y < 0) {
-    y = -y - 1;
-  } else if (y >= height) {
-    y = (2 * height) - y - 1;
-  }
-  return data[(static_cast<size_t>(y) * static_cast<size_t>(width)) + static_cast<size_t>(x)];
+std::size_t ToLinearIndex(int x, int y, int width) {
+  return (static_cast<std::size_t>(y) * static_cast<std::size_t>(width)) + static_cast<std::size_t>(x);
+}
+
+std::uint8_t NormalizeAndRoundUp(int sum) {
+  return static_cast<std::uint8_t>((sum + (kKernelNorm - 1)) / kKernelNorm);
 }
 }  // namespace
 
@@ -44,52 +45,68 @@ bool PikhotskiyRVerticalGaussFilterSEQ::ValidationImpl() {
   if (in.width <= 0 || in.height <= 0) {
     return false;
   }
-  if (in.data.size() != static_cast<size_t>(in.width) * static_cast<size_t>(in.height)) {
+  const auto expected_size = static_cast<std::size_t>(in.width) * static_cast<std::size_t>(in.height);
+  if (in.data.size() != expected_size) {
     return false;
   }
   return true;
 }
 
 bool PikhotskiyRVerticalGaussFilterSEQ::PreProcessingImpl() {
+  const auto &in = GetInput();
+  width_ = in.width;
+  height_ = in.height;
+  stripe_width_ = std::max(1, width_ / kStripeDivider);
+
+  source_ = in.data;
+  vertical_buffer_.assign(source_.size(), 0);
+  result_buffer_.assign(source_.size(), 0);
   return true;
 }
 
 bool PikhotskiyRVerticalGaussFilterSEQ::RunImpl() {
-  const auto &in = GetInput();
+  if (source_.empty() || vertical_buffer_.size() != source_.size() || result_buffer_.size() != source_.size()) {
+    return false;
+  }
 
-  int width = in.width;
-  int height = in.height;
-  const std::vector<uint8_t> &src = in.data;
-  std::vector<uint8_t> dst(static_cast<size_t>(width) * static_cast<size_t>(height));
+  for (int x_begin = 0; x_begin < width_; x_begin += stripe_width_) {
+    const int x_end = std::min(width_, x_begin + stripe_width_);
+    for (int y = 0; y < height_; ++y) {
+      const int y_top = ClampIndex(y - 1, height_);
+      const int y_bottom = ClampIndex(y + 1, height_);
 
-  for (int row = 0; row < height; ++row) {
-    for (int col = 0; col < width; ++col) {
-      int sum = 0;
-
-      sum += kKernel[0][0] * GetPixelMirror(src, col - 1, row - 1, width, height);
-      sum += kKernel[0][1] * GetPixelMirror(src, col, row - 1, width, height);
-      sum += kKernel[0][2] * GetPixelMirror(src, col + 1, row - 1, width, height);
-
-      sum += kKernel[1][0] * GetPixelMirror(src, col - 1, row, width, height);
-      sum += kKernel[1][1] * GetPixelMirror(src, col, row, width, height);
-      sum += kKernel[1][2] * GetPixelMirror(src, col + 1, row, width, height);
-
-      sum += kKernel[2][0] * GetPixelMirror(src, col - 1, row + 1, width, height);
-      sum += kKernel[2][1] * GetPixelMirror(src, col, row + 1, width, height);
-      sum += kKernel[2][2] * GetPixelMirror(src, col + 1, row + 1, width, height);
-
-      dst[(static_cast<size_t>(row) * static_cast<size_t>(width)) + static_cast<size_t>(col)] =
-          static_cast<uint8_t>(sum / kDivider);
+      for (int x = x_begin; x < x_end; ++x) {
+        const std::size_t center = ToLinearIndex(x, y, width_);
+        const std::size_t top = ToLinearIndex(x, y_top, width_);
+        const std::size_t bottom = ToLinearIndex(x, y_bottom, width_);
+        vertical_buffer_[center] = static_cast<int>(source_[top]) + (2 * static_cast<int>(source_[center])) +
+                                   static_cast<int>(source_[bottom]);
+      }
     }
   }
 
-  GetOutput().width = width;
-  GetOutput().height = height;
-  GetOutput().data = std::move(dst);
+  for (int x_begin = 0; x_begin < width_; x_begin += stripe_width_) {
+    const int x_end = std::min(width_, x_begin + stripe_width_);
+    for (int y = 0; y < height_; ++y) {
+      for (int x = x_begin; x < x_end; ++x) {
+        const int x_left = ClampIndex(x - 1, width_);
+        const int x_right = ClampIndex(x + 1, width_);
+        const std::size_t center = ToLinearIndex(x, y, width_);
+        const std::size_t left = ToLinearIndex(x_left, y, width_);
+        const std::size_t right = ToLinearIndex(x_right, y, width_);
+        const int weighted_sum = vertical_buffer_[left] + (2 * vertical_buffer_[center]) + vertical_buffer_[right];
+        result_buffer_[center] = NormalizeAndRoundUp(weighted_sum);
+      }
+    }
+  }
+
   return true;
 }
 
 bool PikhotskiyRVerticalGaussFilterSEQ::PostProcessingImpl() {
+  GetOutput().width = width_;
+  GetOutput().height = height_;
+  GetOutput().data = std::move(result_buffer_);
   return true;
 }
 

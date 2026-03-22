@@ -92,7 +92,7 @@ bool RysevMGaussFilterOMP::PreProcessingImpl() {
 }
 
 void RysevMGaussFilterOMP::ApplyKernelToChannel(int channel, int rows, int cols) {
-#pragma omp parallel for
+#pragma omp parallel for default(none) shared(rows, cols, channels_, input_image_, output_image_, channel) private(row)
   for (int row = 0; row < rows; ++row) {
     for (int col = 0; col < cols; ++col) {
       float sum = ComputePixelValue(row, col, channel, rows, cols, channels_, input_image_);

@@ -24,6 +24,11 @@ Image ReferenceFilter(const Image &input) {
   int w = input.width;
   int h = input.height;
   const std::vector<int> &src = input.data;
+
+  if (w < 3 || h < 3) {
+    return Image{};
+  }
+
   std::vector<int> dst(static_cast<size_t>(w) * static_cast<size_t>(h), 0);
 
   const std::array<std::array<int, 3>, 3> kernel = {{{{1, 2, 1}}, {{2, 4, 2}}, {{1, 2, 1}}}};
@@ -134,6 +139,38 @@ namespace {
 
 TEST_P(FedoseevFuncTest, ImageFiltering) {
   ExecuteTest(GetParam());
+}
+
+TEST(FedoseevValidationTest, InvalidSize) {
+  Image input;
+  input.width = 2;
+  input.height = 2;
+  input.data.resize(4, 0);
+
+  auto seq_task = std::make_shared<LinearImageFilteringVerticalSeq>(input);
+  EXPECT_FALSE(seq_task->Validation());
+  EXPECT_EQ(seq_task->GetOutput().width, 0);
+  EXPECT_EQ(seq_task->GetOutput().height, 0);
+  EXPECT_TRUE(seq_task->GetOutput().data.empty());
+
+  auto omp_task = std::make_shared<LinearImageFilteringVerticalOMP>(input);
+  EXPECT_FALSE(omp_task->Validation());
+  EXPECT_EQ(omp_task->GetOutput().width, 0);
+  EXPECT_EQ(omp_task->GetOutput().height, 0);
+  EXPECT_TRUE(omp_task->GetOutput().data.empty());
+}
+
+TEST(FedoseevValidationTest, InvalidDataSize) {
+  Image input;
+  input.width = 3;
+  input.height = 3;
+  input.data.resize(8, 0);
+
+  auto seq_task = std::make_shared<LinearImageFilteringVerticalSeq>(input);
+  EXPECT_FALSE(seq_task->Validation());
+
+  auto omp_task = std::make_shared<LinearImageFilteringVerticalOMP>(input);
+  EXPECT_FALSE(omp_task->Validation());
 }
 
 constexpr std::array<int, 5> kSizes = {3, 5, 7, 10, 16};

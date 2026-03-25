@@ -165,35 +165,33 @@ class BadanovASelectEdgeSobelFuncTests : public ppc::util::BaseRunFuncTests<InTy
 class BadanovASelectEdgeSobelGradientTests : public ::testing::Test {
  protected:
   void SetUp() override {
-    width_ = 5;
-    height_ = 5;
-    input_.resize(25);
+    width = 5;
+    height = 5;
+    input.resize(25);
 
-    for (int row = 0; row < height_; ++row) {
-      for (int col = 0; col < width_; ++col) {
-        size_t idx = row * width_ + col;
-        input_[idx] = static_cast<uint8_t>(row * 50);
+    for (int row = 0; row < height; ++row) {
+      for (int col = 0; col < width; ++col) {
+        size_t idx = (row * width) + col;
+        input[idx] = static_cast<uint8_t>(row * 50);
       }
     }
   }
 
-  int width_;
-  int height_;
-  InType input_;
+  int width{0};
+  int height{0};
+  InType input{};
 };
 
-TEST_F(BadanovASelectEdgeSobelGradientTests, GradientComputation_ProducesEdges) {
-  BadanovASelectEdgeSobelOMP task(input_);
+TEST_F(BadanovASelectEdgeSobelGradientTests, GradientComputationProducesEdges) {
+  BadanovASelectEdgeSobelOMP task(input);
 
-  // Выполняем задачу через публичный метод RunTask или Execute
-  // Смотрим в базовый класс Task, какой метод публичный
   task.Validation();
   task.PreProcessing();
   task.Run();
   task.PostProcessing();
 
   auto output = task.GetOutput();
-  EXPECT_FALSE(output.empty());
+  ASSERT_FALSE(output.empty());
 
   bool has_edges = false;
   for (uint8_t pixel : output) {
@@ -205,7 +203,7 @@ TEST_F(BadanovASelectEdgeSobelGradientTests, GradientComputation_ProducesEdges) 
   EXPECT_TRUE(has_edges);
 }
 
-TEST_F(BadanovASelectEdgeSobelGradientTests, EdgeDetection_WorksWithSharpTransition) {
+TEST_F(BadanovASelectEdgeSobelGradientTests, EdgeDetectionWorksWithSharpTransition) {
   InType edge_input(9, 0);
   edge_input[0] = 0;
   edge_input[1] = 0;
@@ -225,11 +223,13 @@ TEST_F(BadanovASelectEdgeSobelGradientTests, EdgeDetection_WorksWithSharpTransit
   task.PostProcessing();
 
   auto output = task.GetOutput();
-  EXPECT_GT(output[4], 0);
+  ASSERT_FALSE(output.empty());
+  ASSERT_GT(output.size(), 4);
+  EXPECT_GT(static_cast<int>(output[4]), 0);
 }
 
 // Тесты для граничных случаев
-TEST(BadanovASelectEdgeSobelOMPEdgeCases, AllZeroImage_OutputAllZero) {
+TEST(BadanovASelectEdgeSobelOMPEdgeCases, AllZeroImageOutputAllZero) {
   InType zero_input(100, 0);
   BadanovASelectEdgeSobelOMP task(zero_input);
 
@@ -244,7 +244,7 @@ TEST(BadanovASelectEdgeSobelOMPEdgeCases, AllZeroImage_OutputAllZero) {
   }
 }
 
-TEST(BadanovASelectEdgeSobelOMPEdgeCases, ConstantImage_NoEdges) {
+TEST(BadanovASelectEdgeSobelOMPEdgeCases, ConstantImageNoEdges) {
   InType constant_input(100, 128);
   BadanovASelectEdgeSobelOMP task(constant_input);
 

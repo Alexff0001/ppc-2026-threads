@@ -47,7 +47,7 @@ void BadanovASelectEdgeSobelOMP::ApplySobelOperator(const std::vector<uint8_t> &
   const int height = height_;
   const int width = width_;
 
-#pragma omp parallel
+#pragma omp parallel default(none) shared(input, magnitude, max_magnitude, height, width)
   {
     float local_max_magnitude = 0.0F;
 
@@ -63,17 +63,13 @@ void BadanovASelectEdgeSobelOMP::ApplySobelOperator(const std::vector<uint8_t> &
         const size_t idx = (static_cast<size_t>(row) * static_cast<size_t>(width)) + static_cast<size_t>(col);
         magnitude[idx] = magnitude_value;
 
-        if (magnitude_value > local_max_magnitude) {
-          local_max_magnitude = magnitude_value;
-        }
+        local_max_magnitude = std::max(magnitude_value, local_max_magnitude);
       }
     }
 
 #pragma omp critical
     {
-      if (local_max_magnitude > max_magnitude) {
-        max_magnitude = local_max_magnitude;
-      }
+      max_magnitude = std::max(local_max_magnitude, max_magnitude);
     }
   }
 }
@@ -106,7 +102,7 @@ void BadanovASelectEdgeSobelOMP::ApplyThreshold(const std::vector<float> &magnit
     const float scale = 255.0F / max_magnitude;
     const size_t size = magnitude.size();
 
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static) default(none) shared(magnitude, output, scale, size, threshold_)
     for (size_t i = 0; i < size; ++i) {
       output[i] = (magnitude[i] * scale > static_cast<float>(threshold_)) ? 255 : 0;
     }

@@ -46,8 +46,11 @@ void BadanovASelectEdgeSobelOMP::ApplySobelOperator(const std::vector<uint8_t> &
   max_magnitude = 0.0F;
   const int height = height_;
   const int width = width_;
+  
+  const auto& kernels_x = kKernelX;
+  const auto& kernels_y = kKernelY;
 
-#pragma omp parallel default(none) shared(input, magnitude, max_magnitude, height, width)
+#pragma omp parallel default(none) shared(input, magnitude, max_magnitude, height, width, kernels_x, kernels_y) 
   {
     float local_max_magnitude = 0.0F;
 
@@ -101,8 +104,9 @@ void BadanovASelectEdgeSobelOMP::ApplyThreshold(const std::vector<float> &magnit
   if (max_magnitude > 0.0F) {
     const float scale = 255.0F / max_magnitude;
     const size_t size = magnitude.size();
+    const int threshold = threshold_;
 
-#pragma omp parallel for schedule(static) default(none) shared(magnitude, output, scale, size, threshold_)
+#pragma omp parallel for schedule(static) default(none) shared(magnitude, output, scale, size) firstprivate(threshold)
     for (size_t i = 0; i < size; ++i) {
       output[i] = (magnitude[i] * scale > static_cast<float>(threshold_)) ? 255 : 0;
     }

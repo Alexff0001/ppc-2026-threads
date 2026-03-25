@@ -232,8 +232,7 @@ const std::array<TestType, 22> kTestParam = {
 
 const auto kTestTasksList = std::tuple_cat(
     ppc::util::AddFuncTask<NikitinAMonteCarloSEQ, InType>(kTestParam, PPC_SETTINGS_nikitin_a_monte_carlo),
-    ppc::util::AddFuncTask<NikitinAMonteCarloOMP, InType>(kTestParam, PPC_SETTINGS_nikitin_a_monte_carlo)
-  );
+    ppc::util::AddFuncTask<NikitinAMonteCarloOMP, InType>(kTestParam, PPC_SETTINGS_nikitin_a_monte_carlo));
 
 const auto kGtestValues = ppc::util::ExpandToValues(kTestTasksList);
 

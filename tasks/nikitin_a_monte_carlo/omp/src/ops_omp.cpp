@@ -101,10 +101,10 @@ bool NikitinAMonteCarloOMP::RunImpl() {
   // Сумма значений функции в точках (используем редукцию для параллельной суммы)
   double sum = 0.0;
 
-  // Параллельное выполнение цикла с помощью OpenMP
-  // schedule(static) для равномерного распределения итераций
-  // reduction(+:sum) для безопасного накопления суммы
-  #pragma omp parallel for schedule(static) reduction(+:sum)
+// Параллельное выполнение цикла с помощью OpenMP
+// schedule(static) для равномерного распределения итераций
+// reduction(+:sum) для безопасного накопления суммы
+#pragma omp parallel for schedule(static) reduction(+ : sum)
   for (int i = 0; i < num_points; ++i) {
     std::vector<double> point(dim);
 

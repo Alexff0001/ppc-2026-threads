@@ -224,7 +224,7 @@ TEST_F(BadanovASelectEdgeSobelGradientTests, EdgeDetectionWorksWithSharpTransiti
 
   auto output = task.GetOutput();
   ASSERT_FALSE(output.empty());
-  ASSERT_GT(output.size(), 4);
+  ASSERT_GT(output.size(), static_cast<size_t>(4));
   EXPECT_GT(static_cast<int>(output[4]), 0);
 }
 

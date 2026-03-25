@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "badanov_a_select_edge_sobel/common/include/common.hpp"
+#include "badanov_a_select_edge_sobel/omp/include/ops_omp.hpp"
 #include "badanov_a_select_edge_sobel/seq/include/ops_seq.hpp"
 #include "util/include/perf_test_util.hpp"
 
@@ -46,8 +47,8 @@ TEST_P(BadanovASelectEdgeSobelPerfTests, RunPerfModes) {
 
 namespace {
 
-const auto kAllPerfTasks =
-    ppc::util::MakeAllPerfTasks<InType, BadanovASelectEdgeSobelSEQ>(PPC_SETTINGS_badanov_a_select_edge_sobel);
+const auto kAllPerfTasks = ppc::util::MakeAllPerfTasks<InType, BadanovASelectEdgeSobelSEQ, BadanovASelectEdgeSobelOMP>(
+    PPC_SETTINGS_badanov_a_select_edge_sobel);
 
 const auto kGtestValues = ppc::util::TupleToGTestValues(kAllPerfTasks);
 

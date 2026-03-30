@@ -141,9 +141,8 @@ inline OutType SolveSTL(const BinaryImage &img) {
   std::vector<std::size_t> indices(comps.size());
   std::ranges::iota(indices, static_cast<std::size_t>(0));
 
-  std::for_each(std::execution::par, indices.begin(), indices.end(), [&](std::size_t i) {
-    hulls[i] = ConvexHullMonotonicChain(std::move(comps[i]));
-  });
+  std::for_each(std::execution::par, indices.begin(), indices.end(),
+                [&](std::size_t i) { hulls[i] = ConvexHullMonotonicChain(std::move(comps[i])); });
 
   return hulls;
 }

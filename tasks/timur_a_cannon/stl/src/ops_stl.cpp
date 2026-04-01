@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "timur_a_cannon/common/include/common.hpp"
 #include "util/include/util.hpp"
 
 namespace timur_a_cannon {
@@ -16,7 +17,7 @@ using Matrix = std::vector<std::vector<double>>;
 using BlockGrid = std::vector<std::vector<Matrix>>;
 
 template <typename Func>
-void ParallelFor(int work_size, Func &&func) {
+void ParallelFor(int work_size, const Func &func) {
   if (work_size <= 0) {
     return;
   }
@@ -108,7 +109,7 @@ bool TimurACannonMatrixMultiplicationSTL::ValidationImpl() {
   }
 
   const auto is_square_n = [n](const Matrix &matrix) {
-    return std::all_of(matrix.begin(), matrix.end(), [n](const std::vector<double> &row) { return row.size() == n; });
+    return std::ranges::all_of(matrix, [n](const std::vector<double> &row) { return row.size() == n; });
   };
 
   return is_square_n(mat_a) && is_square_n(mat_b);

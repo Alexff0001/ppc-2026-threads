@@ -57,8 +57,7 @@ void ProcessColumn(int j, const SparseMatrixCCS &a, const SparseMatrixCCS &b, st
     }
   }
 
-  // std::ranges::sort(used_rows);
-  std::sort(used_rows.begin(), used_rows.end());
+  std::ranges::sort(used_rows);
 
   for (int r : used_rows) {
     if (accumulator[r] != Complex(0.0, 0.0)) {
@@ -81,7 +80,11 @@ bool GoriachevaKMultSparseComplexMatrixCcsSTL::RunImpl() {
   std::vector<std::vector<Complex>> local_values(c.cols);
   std::vector<std::vector<int>> local_rows(c.cols);
 
-  const int num_threads = std::thread::hardware_concurrency();
+  int num_threads = static_cast<int>(std::thread::hardware_concurrency());
+  if (num_threads == 0) {
+    num_threads = 1;
+  }
+
   std::vector<std::thread> threads;
 
   auto worker = [&](int start, int end) {
@@ -92,8 +95,8 @@ bool GoriachevaKMultSparseComplexMatrixCcsSTL::RunImpl() {
 
   int cols_per_thread = (b.cols + num_threads - 1) / num_threads;
 
-  for (int t = 0; t < num_threads; t++) {
-    int start = t * cols_per_thread;
+  for (int thread_idx = 0; thread_idx < num_threads; thread_idx++) {
+    int start = thread_idx * cols_per_thread;
     int end = std::min(start + cols_per_thread, b.cols);
 
     if (start >= end) {

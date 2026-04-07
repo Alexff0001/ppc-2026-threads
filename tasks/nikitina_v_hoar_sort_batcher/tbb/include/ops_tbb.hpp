@@ -2,7 +2,6 @@
 
 #include "nikitina_v_hoar_sort_batcher/common/include/common.hpp"
 #include "task/include/task.hpp"
-
 namespace nikitina_v_hoar_sort_batcher {
 
 class HoareSortBatcherTBB : public BaseTask {

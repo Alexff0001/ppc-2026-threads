@@ -41,52 +41,36 @@ std::pair<unsigned char, unsigned char> FindMinMaxParallel(const std::vector<uns
     return {0, 0};
   }
 
-  auto result = tbb::parallel_reduce(
-      tbb::blocked_range<size_t>(0, data.size()),
-      std::make_pair(data[0], data[0]),
-      [&](const tbb::blocked_range<size_t>& r, std::pair<unsigned char, unsigned char> local) {
-        for (size_t i = r.begin(); i != r.end(); ++i) {
-          local.first = std::min(local.first, data[i]);
-          local.second = std::max(local.second, data[i]);
-        }
-        return local;
-      },
-      [](const std::pair<unsigned char, unsigned char>& a,
-         const std::pair<unsigned char, unsigned char>& b) {
-        return std::make_pair(
-            std::min(a.first, b.first),
-            std::max(a.second, b.second)
-        );
-      }
-  );
+  auto result =
+      tbb::parallel_reduce(tbb::blocked_range<size_t>(0, data.size()), std::make_pair(data[0], data[0]),
+                           [&](const tbb::blocked_range<size_t> &r, std::pair<unsigned char, unsigned char> local) {
+    for (size_t i = r.begin(); i != r.end(); ++i) {
+      local.first = std::min(local.first, data[i]);
+      local.second = std::max(local.second, data[i]);
+    }
+    return local;
+  }, [](const std::pair<unsigned char, unsigned char> &a, const std::pair<unsigned char, unsigned char> &b) {
+    return std::make_pair(std::min(a.first, b.first), std::max(a.second, b.second));
+  });
 
   return result;
 }
 
-void NormalizeImage(const std::vector<unsigned char> &source, 
-                    std::vector<unsigned char> &destination,
-                    unsigned char min_value,
-                    double scale_coefficient) { 
-  
-  tbb::parallel_for(
-      tbb::blocked_range<size_t>(0, source.size()),
-      [&](const tbb::blocked_range<size_t>& range) {
-        for (size_t i = range.begin(); i != range.end(); ++i) {
-          destination[i] = NormalizePixel(source[i], min_value, scale_coefficient);
-        }
-      }
-  );
+void NormalizeImage(const std::vector<unsigned char> &source, std::vector<unsigned char> &destination,
+                    unsigned char min_value, double scale_coefficient) {
+  tbb::parallel_for(tbb::blocked_range<size_t>(0, source.size()), [&](const tbb::blocked_range<size_t> &range) {
+    for (size_t i = range.begin(); i != range.end(); ++i) {
+      destination[i] = NormalizePixel(source[i], min_value, scale_coefficient);
+    }
+  });
 }
 
 void FillUniformImage(std::vector<unsigned char> &output, size_t size) {
-  tbb::parallel_for(
-      tbb::blocked_range<size_t>(0, size),
-      [&](const tbb::blocked_range<size_t>& range) {
-        for (size_t i = range.begin(); i != range.end(); ++i) {
-          output[i] = 128;
-        }
-      }
-  );
+  tbb::parallel_for(tbb::blocked_range<size_t>(0, size), [&](const tbb::blocked_range<size_t> &range) {
+    for (size_t i = range.begin(); i != range.end(); ++i) {
+      output[i] = 128;
+    }
+  });
 }
 
 }  // namespace

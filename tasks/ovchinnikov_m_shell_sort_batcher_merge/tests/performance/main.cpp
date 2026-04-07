@@ -3,11 +3,11 @@
 #include <algorithm>
 #include <cstddef>
 
-#include "ovchinnikov_m_shell_sort_batcher_merge_seq/common/include/common.hpp"
-#include "ovchinnikov_m_shell_sort_batcher_merge_seq/seq/include/ops_seq.hpp"
+#include "ovchinnikov_m_shell_sort_batcher_merge/common/include/common.hpp"
+#include "ovchinnikov_m_shell_sort_batcher_merge/seq/include/ops_seq.hpp"
 #include "util/include/perf_test_util.hpp"
 
-namespace ovchinnikov_m_shell_sort_batcher_merge_seq {
+namespace ovchinnikov_m_shell_sort_batcher_merge {
 
 class OvchinnikovMRunPerfTestsThreads : public ppc::util::BaseRunPerfTests<InType, OutType> {
  protected:
@@ -38,7 +38,7 @@ TEST_P(OvchinnikovMRunPerfTestsThreads, RunPerfModes) {
 namespace {
 
 const auto kAllPerfTasks = ppc::util::MakeAllPerfTasks<InType, OvchinnikovMShellSortBatcherMergeSEQ>(
-    PPC_SETTINGS_ovchinnikov_m_shell_sort_batcher_merge_seq);
+    PPC_SETTINGS_ovchinnikov_m_shell_sort_batcher_merge);
 
 const auto kGtestValues = ppc::util::TupleToGTestValues(kAllPerfTasks);
 
@@ -48,4 +48,4 @@ INSTANTIATE_TEST_SUITE_P(ShellSortBatcherMergePerfTests, OvchinnikovMRunPerfTest
 
 }  // namespace
 
-}  // namespace ovchinnikov_m_shell_sort_batcher_merge_seq
+}  // namespace ovchinnikov_m_shell_sort_batcher_merge

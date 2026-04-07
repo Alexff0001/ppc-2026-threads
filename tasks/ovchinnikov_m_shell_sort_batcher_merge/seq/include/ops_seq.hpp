@@ -2,10 +2,10 @@
 
 #include <vector>
 
-#include "ovchinnikov_m_shell_sort_batcher_merge_seq/common/include/common.hpp"
+#include "ovchinnikov_m_shell_sort_batcher_merge/common/include/common.hpp"
 #include "task/include/task.hpp"
 
-namespace ovchinnikov_m_shell_sort_batcher_merge_seq {
+namespace ovchinnikov_m_shell_sort_batcher_merge {
 
 class OvchinnikovMShellSortBatcherMergeSEQ : public BaseTask {
  public:
@@ -26,4 +26,4 @@ class OvchinnikovMShellSortBatcherMergeSEQ : public BaseTask {
   InType data_;
 };
 
-}  // namespace ovchinnikov_m_shell_sort_batcher_merge_seq
+}  // namespace ovchinnikov_m_shell_sort_batcher_merge

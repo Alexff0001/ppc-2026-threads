@@ -77,7 +77,7 @@ bool ShkrebkoMCalcOfIntegralRectTBB::PostProcessingImpl() {
 }
 
 double ShkrebkoMCalcOfIntegralRectTBB::ComputeBlockSum(std::size_t start_idx, std::size_t end_idx,
-                                                       const std::vector<double> &h) const {
+                                                       const std::vector<double> &h) {
   if (start_idx >= end_idx) {
     return 0.0;
   }
@@ -88,9 +88,9 @@ double ShkrebkoMCalcOfIntegralRectTBB::ComputeBlockSum(std::size_t start_idx, st
 
   std::vector<int> indices(dim);
   std::size_t temp = start_idx;
-  for (int d = static_cast<int>(dim) - 1; d >= 0; --d) {
-    indices[d] = static_cast<int>(temp % static_cast<std::size_t>(n_steps[d]));
-    temp /= static_cast<std::size_t>(n_steps[d]);
+  for (int idx = static_cast<int>(dim) - 1; idx >= 0; --idx) { {
+    indices[idx] = static_cast<int>(temp % static_cast<std::size_t>(n_steps[idx]));
+    temp /= static_cast<std::size_t>(n_steps[idx]);
   }
 
   double block_sum = 0.0;

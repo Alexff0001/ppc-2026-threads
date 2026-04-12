@@ -8,7 +8,6 @@
 #include <cstdint>
 
 #include "lopatin_a_sobel_operator/common/include/common.hpp"
-#include "util/include/util.hpp"
 
 namespace lopatin_a_sobel_operator {
 
@@ -46,11 +45,17 @@ bool LopatinASobelOperatorTBB::RunImpl() {
         int gy = 0;
 
         for (int ky = -1; ky <= 1; ++ky) {
-          for (int kx = -1; kx <= 1; ++kx) {
-            std::uint8_t pixel = input_data[((j + ky) * w_) + (i + kx)];
-            gx += pixel * kSobelX.at(ky + 1).at(kx + 1);
-            gy += pixel * kSobelY.at(ky + 1).at(kx + 1);
-          }
+            std::uint8_t pixel = input_data[((j + ky) * w_) + (i - 1)];
+            gx += pixel * kSobelX.at(ky + 1).at(0);
+            gy += pixel * kSobelY.at(ky + 1).at(0);
+
+            pixel = input_data[((j + ky) * w_) + (i)];
+            gx += pixel * kSobelX.at(ky + 1).at(1);
+            gy += pixel * kSobelY.at(ky + 1).at(1);
+
+            pixel = input_data[((j + ky) * w_) + (i + 1)];
+            gx += pixel * kSobelX.at(ky + 1).at(2);
+            gy += pixel * kSobelY.at(ky + 1).at(2);
         }
 
         auto magnitude = static_cast<int>(round(std::sqrt((gx * gx) + (gy * gy))));

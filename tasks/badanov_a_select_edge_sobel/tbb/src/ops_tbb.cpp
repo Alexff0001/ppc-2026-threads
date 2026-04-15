@@ -61,9 +61,7 @@ void BadanovASelectEdgeSobelTBB::ApplySobelOperator(const std::vector<uint8_t> &
         const size_t idx = (static_cast<size_t>(row) * static_cast<size_t>(width)) + static_cast<size_t>(col);
         magnitude[idx] = magnitude_value;
 
-        if (magnitude_value > local_max) {
-          local_max = magnitude_value;
-        }
+        local_max = std::max(magnitude_value, local_max);
       }
     }
     return local_max;

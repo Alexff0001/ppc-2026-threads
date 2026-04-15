@@ -260,7 +260,7 @@ TEST(BadanovASelectEdgeSobelOMPEdgeCases, ConstantImageNoEdges) {
   }
 }
 
-TEST(BadanovASelectEdgeSobelTBBEdgeCases, VerySmallImage_2x2) {
+TEST(BadanovASelectEdgeSobelTBBEdgeCases, VerySmallImage2x2) {
   InType small_input(4, 0);
   small_input[0] = 0;
   small_input[1] = 255;

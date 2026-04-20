@@ -20,21 +20,38 @@ bool ValidateBorders(const std::vector<std::pair<double, double>> &borders) {
   });
 }
 
+void ComputeHAndVolume(const std::vector<std::pair<double, double>> &borders, int n, int dim, std::vector<double> &h,
+                       double &cell_volume) {
+  cell_volume = 1.0;
+  for (int idx = 0; idx < dim; ++idx) {
+    const double left = borders[idx].first;
+    const double right = borders[idx].second;
+    h[idx] = (right - left) / static_cast<double>(n);
+    cell_volume *= h[idx];
+  }
+}
+
+double ComputeValueAtPoint(size_t linear_idx, const std::function<double(const std::vector<double> &)> &func,
+                           const std::vector<std::pair<double, double>> &borders, const std::vector<double> &h, int dim,
+                           int n) {
+  size_t tmp = linear_idx;
+  std::vector<double> point(dim);
+
+  for (int dimension = dim - 1; dimension >= 0; --dimension) {
+    int idx_val = static_cast<int>(tmp % static_cast<size_t>(n));
+    tmp /= static_cast<size_t>(n);
+    point[dimension] = borders[dimension].first + ((static_cast<double>(idx_val) + 0.5) * h[dimension]);
+  }
+
+  return func(point);
+}
+
 void ProcessRange(size_t start, size_t end, const std::function<double(const std::vector<double> &)> &func,
                   const std::vector<std::pair<double, double>> &borders, const std::vector<double> &h, int dim, int n,
                   std::atomic<bool> &error_flag, double &result) {
   double local_sum = 0.0;
   for (size_t linear_idx = start; linear_idx < end && !error_flag.load(); ++linear_idx) {
-    size_t tmp = linear_idx;
-    std::vector<double> point(dim);
-
-    for (int dimension = dim - 1; dimension >= 0; --dimension) {
-      int idx_val = static_cast<int>(tmp % static_cast<size_t>(n));
-      tmp /= static_cast<size_t>(n);
-      point[dimension] = borders[dimension].first + ((static_cast<double>(idx_val) + 0.5) * h[dimension]);
-    }
-
-    double f_val = func(point);
+    double f_val = ComputeValueAtPoint(linear_idx, func, borders, h, dim, n);
     if (!std::isfinite(f_val)) {
       error_flag.store(true);
       return;
@@ -82,13 +99,7 @@ bool DergynovSIntegralsMultistepRectangleSTL::RunImpl() {
 
   std::vector<double> h(dim);
   double cell_volume = 1.0;
-
-  for (int idx = 0; idx < dim; ++idx) {
-    const double left = borders[idx].first;
-    const double right = borders[idx].second;
-    h[idx] = (right - left) / static_cast<double>(n);
-    cell_volume *= h[idx];
-  }
+  ComputeHAndVolume(borders, n, dim, h, cell_volume);
 
   size_t total_points = 1;
   for (int idx = 0; idx < dim; ++idx) {
@@ -96,6 +107,13 @@ bool DergynovSIntegralsMultistepRectangleSTL::RunImpl() {
   }
 
   unsigned int num_threads = std::thread::hardware_concurrency();
+  if (num_threads == 0) {
+    num_threads = 1;
+  }
+  if (num_threads > total_points) {
+    num_threads = static_cast<unsigned int>(total_points);
+  }
+
   if (num_threads == 0) {
     num_threads = 1;
   }
@@ -107,12 +125,14 @@ bool DergynovSIntegralsMultistepRectangleSTL::RunImpl() {
   threads.reserve(num_threads);
 
   size_t chunk_size = total_points / num_threads;
-  for (unsigned int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
-    size_t start = thread_idx * chunk_size;
-    size_t end = (thread_idx == num_threads - 1) ? total_points : start + chunk_size;
+  size_t remainder = total_points % num_threads;
 
+  size_t start = 0;
+  for (unsigned int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+    size_t end = start + chunk_size + (thread_idx < remainder ? 1 : 0);
     threads.emplace_back(ProcessRange, start, end, func, borders, h, dim, n, std::ref(error_flag),
                          std::ref(partial_sums[thread_idx]));
+    start = end;
   }
 
   for (auto &thread : threads) {

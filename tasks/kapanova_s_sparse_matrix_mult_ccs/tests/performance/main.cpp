@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "kapanova_s_sparse_matrix_mult_ccs/common/include/common.hpp"
+#include "kapanova_s_sparse_matrix_mult_ccs/omp/include/ops_omp.hpp"
 #include "kapanova_s_sparse_matrix_mult_ccs/seq/include/ops_seq.hpp"
 #include "util/include/perf_test_util.hpp"
 

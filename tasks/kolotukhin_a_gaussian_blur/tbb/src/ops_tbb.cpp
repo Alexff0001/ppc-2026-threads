@@ -1,9 +1,12 @@
 #include "kolotukhin_a_gaussian_blur/tbb/include/ops_tbb.hpp"
 
+#include <tbb/blocked_range2d.h>
 #include <tbb/parallel_for.h>
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
 #include <cstdint>
-#include <tuple>
 #include <vector>
 
 #include "kolotukhin_a_gaussian_blur/common/include/common.hpp"
@@ -32,29 +35,46 @@ bool KolotukhinAGaussinBlureTBB::PreProcessingImpl() {
   return true;
 }
 
+bool KolotukhinAGaussinBlureTBB::ValidationImpl() {
+  const auto &pixel_data = get<0>(GetInput());
+  const auto img_width = get<1>(GetInput());
+  const auto img_height = get<2>(GetInput());
+
+  return static_cast<std::size_t>(img_height) * static_cast<std::size_t>(img_width) == pixel_data.size();
+}
+
+bool KolotukhinAGaussinBlureTBB::PreProcessingImpl() {
+  const auto img_width = get<1>(GetInput());
+  const auto img_height = get<2>(GetInput());
+
+  GetOutput().assign(static_cast<std::size_t>(img_height) * static_cast<std::size_t>(img_width), 0);
+  return true;
+}
+
 bool KolotukhinAGaussinBlureTBB::RunImpl() {
-  const auto &pixel_data = std::get<0>(GetInput());
-  const auto img_width = std::get<1>(GetInput());
-  const auto img_height = std::get<2>(GetInput());
+  const auto &pixel_data = get<0>(GetInput());
+  const auto img_width = get<1>(GetInput());
+  const auto img_height = get<2>(GetInput());
+
+  const static std::array<std::array<int, 3>, 3> kKernel = {{{{1, 2, 1}}, {{2, 4, 2}}, {{1, 2, 1}}}};
+  const static int kSum = 16;
 
   auto &output = GetOutput();
 
-  std::vector<std::uint8_t> temp(pixel_data.size());
-
-  tbb::parallel_for(0, img_height, [&](int y) {
-    for (int x = 0; x < img_width; x++) {
-      int sum = GetPixel(pixel_data, img_width, img_height, x - 1, y) +
-                2 * GetPixel(pixel_data, img_width, img_height, x, y) +
-                GetPixel(pixel_data, img_width, img_height, x + 1, y);
-      temp[y * img_width + x] = static_cast<std::uint8_t>(sum / 4);
-    }
-  });
-
-  tbb::parallel_for(0, img_height, [&](int y) {
-    for (int x = 0; x < img_width; x++) {
-      int sum = GetPixel(temp, img_width, img_height, x, y - 1) + 2 * GetPixel(temp, img_width, img_height, x, y) +
-                GetPixel(temp, img_width, img_height, x, y + 1);
-      output[y * img_width + x] = static_cast<std::uint8_t>(sum / 4);
+  tbb::parallel_for(tbb::blocked_range2d<int>(0, img_height, 0, img_width),
+                    [&](const tbb::blocked_range2d<int> &range) {
+    for (int row = range.rows().begin(); row < range.rows().end(); ++row) {
+      for (int col = range.cols().begin(); col < range.cols().end(); ++col) {
+        int acc = 0;
+        for (int dy = -1; dy <= 1; dy++) {
+          for (int dx = -1; dx <= 1; dx++) {
+            std::uint8_t pixel = GetPixel(pixel_data, img_width, img_height, col + dx, row + dy);
+            acc += kKernel.at(1 + dy).at(1 + dx) * static_cast<int>(pixel);
+          }
+        }
+        output[(static_cast<std::size_t>(row) * static_cast<std::size_t>(img_width)) + static_cast<std::size_t>(col)] =
+            static_cast<std::uint8_t>(acc / kSum);
+      }
     }
   });
 

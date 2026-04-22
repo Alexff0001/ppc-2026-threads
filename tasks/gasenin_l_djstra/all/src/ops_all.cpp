@@ -13,7 +13,6 @@
 #include "gasenin_l_djstra/common/include/common.hpp"
 
 namespace gasenin_l_djstra {
-
 namespace {
 
 void MinPairImpl(void *in, void *inout, const int *len, MPI_Datatype * /*dtype*/) {
@@ -25,6 +24,71 @@ void MinPairImpl(void *in, void *inout, const int *len, MPI_Datatype * /*dtype*/
       b[i + 1] = a[i + 1];
     }
   }
+}
+
+void MinPairMpi(void *in, void *inout, int *len, MPI_Datatype *dtype) {
+  const int *len_const = len;
+  MinPairImpl(in, inout, len_const, dtype);
+}
+
+void FindThreadLocalMinima(const std::vector<InType> &dist, const std::vector<char> &visited, int local_n, int start_v,
+                           InType inf, std::vector<InType> &thread_mins, std::vector<InType> &thread_vertices) {
+#pragma omp parallel default(none) shared(local_n, start_v, dist, visited, thread_mins, thread_vertices, inf)
+  {
+    const int tid = omp_get_thread_num();
+    InType t_min = inf;
+    InType t_v = -1;
+
+#pragma omp for nowait
+    for (int i = 0; i < local_n; ++i) {
+      if (visited[i] == 0 && dist[i] < t_min) {
+        t_min = dist[i];
+        t_v = start_v + i;
+      }
+    }
+
+    thread_mins[tid] = t_min;
+    thread_vertices[tid] = t_v;
+  }
+}
+
+std::pair<InType, InType> ReduceThreadMinima(const std::vector<InType> &thread_mins,
+                                             const std::vector<InType> &thread_vertices, int num_threads, InType inf) {
+  InType local_min = inf;
+  InType local_vertex = -1;
+  for (int i = 0; i < num_threads; ++i) {
+    if (thread_mins[i] < local_min) {
+      local_min = thread_mins[i];
+      local_vertex = thread_vertices[i];
+    }
+  }
+  return {local_min, local_vertex};
+}
+
+void UpdateLocalDistances(std::vector<InType> &dist, const std::vector<char> &visited, int local_n, int start_v,
+                          InType global_vertex, InType global_min) {
+#pragma omp parallel for default(none) shared(local_n, start_v, dist, visited, global_vertex, global_min)
+  for (int i = 0; i < local_n; ++i) {
+    if (visited[i] == 0) {
+      const InType global_i = start_v + i;
+      if (global_i != global_vertex) {
+        const InType weight = std::abs(global_vertex - global_i);
+        const InType new_dist = global_min + weight;
+        dist[i] = std::min(new_dist, dist[i]);
+      }
+    }
+  }
+}
+
+int64_t ComputeLocalSum(const std::vector<InType> &dist, int local_n, InType inf) {
+  int64_t local_sum = 0;
+#pragma omp parallel for reduction(+ : local_sum) default(none) shared(local_n, dist, inf)
+  for (int i = 0; i < local_n; ++i) {
+    if (dist[i] != inf) {
+      local_sum += dist[i];
+    }
+  }
+  return local_sum;
 }
 
 }  // namespace
@@ -77,12 +141,7 @@ bool GaseninLDjstraALL::RunImpl() {
   const int start_v = start_v_;
 
   MPI_Op min_pair_op = MPI_OP_NULL;
-  // Lambda wrapper to match MPI_User_function signature
-  auto min_pair_fn = [](void *in, void *inout, int *len, MPI_Datatype *dtype) {
-    const int *len_const = len;  // Explicit const to avoid warning
-    MinPairImpl(in, inout, len_const, dtype);
-  };
-  MPI_Op_create(min_pair_fn, 1, &min_pair_op);
+  MPI_Op_create(MinPairMpi, 1, &min_pair_op);
 
   int num_threads = 1;
 #pragma omp parallel default(none) shared(num_threads)
@@ -95,32 +154,9 @@ bool GaseninLDjstraALL::RunImpl() {
   std::vector<InType> thread_vertices(num_threads, -1);
 
   for (int iteration = 0; iteration < n; ++iteration) {
-#pragma omp parallel default(none) shared(local_n, start_v, dist, visited, thread_mins, thread_vertices, inf)
-    {
-      const int tid = omp_get_thread_num();
-      InType t_min = inf;
-      InType t_v = -1;
+    FindThreadLocalMinima(dist, visited, local_n, start_v, inf, thread_mins, thread_vertices);
 
-#pragma omp for nowait
-      for (int i = 0; i < local_n; ++i) {
-        if (visited[i] == 0 && dist[i] < t_min) {
-          t_min = dist[i];
-          t_v = start_v + i;
-        }
-      }
-
-      thread_mins[tid] = t_min;
-      thread_vertices[tid] = t_v;
-    }
-
-    InType local_min = inf;
-    InType local_vertex = -1;
-    for (int i = 0; i < num_threads; ++i) {
-      if (thread_mins[i] < local_min) {
-        local_min = thread_mins[i];
-        local_vertex = thread_vertices[i];
-      }
-    }
+    auto [local_min, local_vertex] = ReduceThreadMinima(thread_mins, thread_vertices, num_threads, inf);
 
     std::array<InType, 2> local_pair = {local_min, local_vertex};
     std::array<InType, 2> global_pair = {inf, -1};
@@ -137,30 +173,13 @@ bool GaseninLDjstraALL::RunImpl() {
       visited[global_vertex - start_v] = 1;
     }
 
-#pragma omp parallel for default(none) shared(local_n, start_v, dist, visited, global_vertex, global_min)
-    for (int i = 0; i < local_n; ++i) {
-      if (visited[i] == 0) {
-        const InType global_i = start_v + i;
-        if (global_i != global_vertex) {
-          const InType weight = std::abs(global_vertex - global_i);
-          const InType new_dist = global_min + weight;
-          dist[i] = std::min(new_dist, dist[i]);
-        }
-      }
-    }
+    UpdateLocalDistances(dist, visited, local_n, start_v, global_vertex, global_min);
   }
 
   MPI_Op_free(&min_pair_op);
 
-  int64_t local_sum = 0;
-#pragma omp parallel for reduction(+ : local_sum) default(none) shared(local_n, dist, inf)
-  for (int i = 0; i < local_n; ++i) {
-    if (dist[i] != inf) {
-      local_sum += dist[i];
-    }
-  }
-
-  MPI_Allreduce(&local_sum, &total_sum_, 1, MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
+  int64_t local_sum = ComputeLocalSum(dist, local_n, inf);
+  MPI_Allreduce(&local_sum, &total_sum_, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD);
 
   return true;
 }

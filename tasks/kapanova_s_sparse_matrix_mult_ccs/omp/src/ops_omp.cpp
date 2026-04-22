@@ -150,9 +150,10 @@ bool KapanovaSSparseMatrixMultCCSOMP::RunImpl() {
   }
 
 #pragma omp parallel for schedule(dynamic) default(none) \
-    shared(a, b, c, thread_accum, thread_row_mask, thread_active_rows, thread_col_rows, thread_col_vals)
-  for (int j = 0; j < static_cast<int>(c.cols); ++j) {
-    ProcessColumn(j, a, b, thread_accum, thread_row_mask, thread_active_rows, thread_col_rows, thread_col_vals);
+    shared(a, b, thread_accum, thread_row_mask, thread_active_rows, thread_col_rows, thread_col_vals)
+  for (size_t j = 0; j < c.cols; ++j) {
+    ProcessColumn(static_cast<int>(j), a, b, thread_accum, thread_row_mask, thread_active_rows, thread_col_rows,
+                  thread_col_vals);
   }
 
   std::vector<size_t> col_sizes(c.cols, 0);

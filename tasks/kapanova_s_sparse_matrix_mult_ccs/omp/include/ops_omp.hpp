@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstddef>
+#include <vector>
+
 #include "kapanova_s_sparse_matrix_mult_ccs/common/include/common.hpp"
 #include "task/include/task.hpp"
 
@@ -18,19 +21,20 @@ class KapanovaSSparseMatrixMultCCSOMP : public BaseTask {
   bool RunImpl() override;
   bool PostProcessingImpl() override;
 
-  void ProcessColumn(int j, const CCSMatrix &a, const CCSMatrix &b, std::vector<std::vector<double>> &thread_accum,
-                     std::vector<std::vector<bool>> &thread_row_mask,
-                     std::vector<std::vector<size_t>> &thread_active_rows,
-                     std::vector<std::vector<std::vector<size_t>>> &thread_col_rows,
-                     std::vector<std::vector<std::vector<double>>> &thread_col_vals);
+  static void ProcessColumn(int j, const CCSMatrix &a, const CCSMatrix &b,
+                            std::vector<std::vector<double>> &thread_accum,
+                            std::vector<std::vector<bool>> &thread_row_mask,
+                            std::vector<std::vector<size_t>> &thread_active_rows,
+                            std::vector<std::vector<std::vector<size_t>>> &thread_col_rows,
+                            std::vector<std::vector<std::vector<double>>> &thread_col_vals);
 
-  void ComputeColumnSizes(int num_threads, size_t cols,
-                          const std::vector<std::vector<std::vector<size_t>>> &thread_col_rows,
-                          std::vector<size_t> &col_sizes);
+  static void ComputeColumnSizes(int num_threads, size_t cols,
+                                 const std::vector<std::vector<std::vector<size_t>>> &thread_col_rows,
+                                 std::vector<size_t> &col_sizes);
 
-  void MergeThreadResults(int num_threads, size_t cols, CCSMatrix &c,
-                          const std::vector<std::vector<std::vector<size_t>>> &thread_col_rows,
-                          const std::vector<std::vector<std::vector<double>>> &thread_col_vals);
+  static void MergeThreadResults(int num_threads, size_t cols, CCSMatrix &c,
+                                 const std::vector<std::vector<std::vector<size_t>>> &thread_col_rows,
+                                 const std::vector<std::vector<std::vector<double>>> &thread_col_vals);
 };
 
 }  // namespace kapanova_s_sparse_matrix_mult_ccs

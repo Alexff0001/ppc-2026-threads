@@ -14,6 +14,8 @@
 
 #include "oneapi/tbb/blocked_range.h"
 #include "oneapi/tbb/parallel_for.h"
+#include "sabutay_sparse_complex_ccs_mult_all/common/include/common.hpp"
+#include "task/include/task.hpp"
 #include "util/include/util.hpp"
 
 namespace sabutay_sparse_complex_ccs_mult_all {
@@ -146,69 +148,55 @@ void SpmmAbc(const CCS &left, const CCS &right, CCS &out, double drop_magnitude)
     out.col_start[static_cast<std::size_t>(j) + 1U] = static_cast<int>(out.nz.size());
   }
 }
-}  // namespace
 
-SabutaySparseComplexCcsMultAll::SabutaySparseComplexCcsMultAll(const InType &in) {
-  SetTypeOfTask(GetStaticTypeOfTask());
-  GetInput() = in;
-  GetOutput() = CCS();
-}
-
-void SabutaySparseComplexCcsMultAll::BuildProductMatrix(const CCS &left, const CCS &right, CCS &out,
-                                                        ppc::task::TypeOfTask backend) {
-  if (backend == ppc::task::TypeOfTask::kSEQ || backend == ppc::task::TypeOfTask::kSTL) {
-    SpmmAbc(left, right, out, kDropMagnitude);
+void BuildProductMatrixOmp(const CCS &left, const CCS &right, CCS &out) {
+  out.row_count = left.row_count;
+  out.col_count = right.col_count;
+  out.col_start.assign(static_cast<std::size_t>(out.col_count) + 1U, 0);
+  out.row_index.clear();
+  out.nz.clear();
+  if (out.col_count == 0) {
     return;
   }
 
-  if (backend == ppc::task::TypeOfTask::kOMP) {
-    out.row_count = left.row_count;
-    out.col_count = right.col_count;
-    out.col_start.assign(static_cast<std::size_t>(out.col_count) + 1U, 0);
-    out.row_index.clear();
-    out.nz.clear();
-    if (out.col_count == 0) {
-      return;
-    }
-
-    std::vector<std::vector<std::pair<int, std::complex<double>>>> columns(static_cast<std::size_t>(out.col_count));
+  std::vector<std::vector<std::pair<int, std::complex<double>>>> columns(static_cast<std::size_t>(out.col_count));
 #pragma omp parallel default(none) shared(left, right, columns)
-    {
-      std::vector<std::pair<int, std::complex<double>>> buffer;
-      buffer.reserve(128U);
+  {
+    std::vector<std::pair<int, std::complex<double>>> buffer;
+    buffer.reserve(128U);
 
 #pragma omp for schedule(static)
-      for (int j = 0; j < right.col_count; ++j) {
-        auto &column = columns[static_cast<std::size_t>(j)];
-        BuildColumnFromRight(left, right, j, buffer);
-        if (!buffer.empty()) {
-          SortBufferByRow(buffer);
-        }
-        CoalesceBufferToColumn(buffer, column, kDropMagnitude);
+    for (int j = 0; j < right.col_count; ++j) {
+      auto &column = columns[static_cast<std::size_t>(j)];
+      BuildColumnFromRight(left, right, j, buffer);
+      if (!buffer.empty()) {
+        SortBufferByRow(buffer);
       }
+      CoalesceBufferToColumn(buffer, column, kDropMagnitude);
     }
-
-    for (int j = 0; j < out.col_count; ++j) {
-      const int col_size = static_cast<int>(columns[static_cast<std::size_t>(j)].size());
-      out.col_start[static_cast<std::size_t>(j) + 1U] = out.col_start[static_cast<std::size_t>(j)] + col_size;
-    }
-
-    const auto nnz = static_cast<std::size_t>(out.col_start.back());
-    out.row_index.resize(nnz);
-    out.nz.resize(nnz);
-
-    for (int j = 0; j < out.col_count; ++j) {
-      const int start = out.col_start[static_cast<std::size_t>(j)];
-      const auto &column = columns[static_cast<std::size_t>(j)];
-      for (std::size_t k = 0; k < column.size(); ++k) {
-        const int dst = start + static_cast<int>(k);
-        out.row_index[static_cast<std::size_t>(dst)] = column[k].first;
-        out.nz[static_cast<std::size_t>(dst)] = column[k].second;
-      }
-    }
-    return;
   }
 
+  for (int j = 0; j < out.col_count; ++j) {
+    const int col_size = static_cast<int>(columns[static_cast<std::size_t>(j)].size());
+    out.col_start[static_cast<std::size_t>(j) + 1U] = out.col_start[static_cast<std::size_t>(j)] + col_size;
+  }
+
+  const auto nnz = static_cast<std::size_t>(out.col_start.back());
+  out.row_index.resize(nnz);
+  out.nz.resize(nnz);
+
+  for (int j = 0; j < out.col_count; ++j) {
+    const int start = out.col_start[static_cast<std::size_t>(j)];
+    const auto &column = columns[static_cast<std::size_t>(j)];
+    for (std::size_t k = 0; k < column.size(); ++k) {
+      const int dst = start + static_cast<int>(k);
+      out.row_index[static_cast<std::size_t>(dst)] = column[k].first;
+      out.nz[static_cast<std::size_t>(dst)] = column[k].second;
+    }
+  }
+}
+
+void BuildProductMatrixTbb(const CCS &left, const CCS &right, CCS &out) {
   out.row_count = left.row_count;
   out.col_count = right.col_count;
   out.col_start.assign(static_cast<std::size_t>(out.col_count) + 1U, 0);
@@ -254,6 +242,32 @@ void SabutaySparseComplexCcsMultAll::BuildProductMatrix(const CCS &left, const C
     const auto idx = static_cast<std::size_t>(jcol);
     out.row_index.insert(out.row_index.end(), local_row_index[idx].begin(), local_row_index[idx].end());
     out.nz.insert(out.nz.end(), local_nz[idx].begin(), local_nz[idx].end());
+  }
+}
+}  // namespace
+
+SabutaySparseComplexCcsMultAll::SabutaySparseComplexCcsMultAll(const InType &in) {
+  SetTypeOfTask(GetStaticTypeOfTask());
+  GetInput() = in;
+  GetOutput() = CCS();
+}
+
+void SabutaySparseComplexCcsMultAll::BuildProductMatrix(const CCS &left, const CCS &right, CCS &out,
+                                                        ppc::task::TypeOfTask backend) {
+  switch (backend) {
+    case ppc::task::TypeOfTask::kSEQ:
+    case ppc::task::TypeOfTask::kSTL:
+      SpmmAbc(left, right, out, kDropMagnitude);
+      return;
+    case ppc::task::TypeOfTask::kOMP:
+      BuildProductMatrixOmp(left, right, out);
+      return;
+    case ppc::task::TypeOfTask::kTBB:
+      BuildProductMatrixTbb(left, right, out);
+      return;
+    default:
+      SpmmAbc(left, right, out, kDropMagnitude);
+      return;
   }
 }
 

@@ -48,10 +48,10 @@ bool PotashnikMMatrixMultComplexTBB::RunImpl() {
 
   tbb::enumerable_thread_specific<LocalMap> local_buffers;
 
-  const size_t GRAIN_I = 64;
-  const size_t GRAIN_J = 256;
+  const size_t grain_i = 64;
+  const size_t grain_j = 256;
 
-  tbb::parallel_for(tbb::blocked_range2d<size_t>(0, left_count, GRAIN_I, 0, right_count, GRAIN_J),
+  tbb::parallel_for(tbb::blocked_range2d<size_t>(0, left_count, grain_i, 0, right_count, grain_j),
                     [&](const tbb::blocked_range2d<size_t> &r) {
     auto &local_buffer = local_buffers.local();
 

@@ -50,12 +50,16 @@ void BadanovASelectEdgeSobelSTL::ApplySobelOperator(const std::vector<uint8_t> &
   }
 
   unsigned int num_threads = std::thread::hardware_concurrency();
-  if (num_threads == 0) num_threads = 2;
+  if (num_threads == 0) {
+    num_threads = 2;
+  }
 
   // Вычисляем строки на поток (только внутренние строки: от 1 до height-2)
   int rows_to_process = height - 2;
   int rows_per_thread = rows_to_process / num_threads;
-  if (rows_per_thread < 1) rows_per_thread = 1;
+  if (rows_per_thread < 1) {
+    rows_per_thread = 1;
+  }
   num_threads = (rows_to_process + rows_per_thread - 1) / rows_per_thread;
 
   std::vector<std::thread> threads;
@@ -93,7 +97,7 @@ void BadanovASelectEdgeSobelSTL::ApplySobelOperator(const std::vector<uint8_t> &
     });
   }
 
-  for (auto& thread : threads) {
+  for (auto &thread : threads) {
     thread.join();
   }
 
@@ -130,7 +134,9 @@ void BadanovASelectEdgeSobelSTL::ApplyThreshold(const std::vector<float> &magnit
     const int threshold = threshold_;
 
     unsigned int num_threads = std::thread::hardware_concurrency();
-    if (num_threads == 0) num_threads = 2;
+    if (num_threads == 0) {
+      num_threads = 2;
+    }
 
     std::vector<std::thread> threads;
     size_t chunk_size = (size + num_threads - 1) / num_threads;
@@ -146,7 +152,7 @@ void BadanovASelectEdgeSobelSTL::ApplyThreshold(const std::vector<float> &magnit
       });
     }
 
-    for (auto& thread : threads) {
+    for (auto &thread : threads) {
       thread.join();
     }
   } else {

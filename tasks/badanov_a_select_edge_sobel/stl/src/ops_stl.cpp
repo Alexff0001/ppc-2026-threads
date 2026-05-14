@@ -56,9 +56,7 @@ void BadanovASelectEdgeSobelSTL::ApplySobelOperator(const std::vector<uint8_t> &
 
   int rows_to_process = height - 2;
   unsigned int rows_per_thread = rows_to_process / num_threads;
-  if (rows_per_thread < 1) {
-    rows_per_thread = 1;
-  }
+  rows_per_thread = std::max<unsigned int>(rows_per_thread, 1);
   num_threads = (rows_to_process + rows_per_thread - 1) / rows_per_thread;
 
   std::vector<std::thread> threads;
@@ -67,12 +65,12 @@ void BadanovASelectEdgeSobelSTL::ApplySobelOperator(const std::vector<uint8_t> &
 
   for (unsigned int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
     unsigned int start_row = 1 + (thread_idx * rows_per_thread);
-    int end_row = (thread_idx == num_threads - 1) ? (height - 1) : (start_row + rows_per_thread);
+    int end_row = static_cast<int>((thread_idx == num_threads - 1) ? (height - 1) : (start_row + rows_per_thread));
 
     threads.emplace_back([&, start_row, end_row]() {
       float local_max = 0.0F;
 
-      for (int row = start_row; row < end_row; ++row) {
+      for (int row = static_cast<int>(start_row); row < end_row; ++row) {
         for (int col = 1; col < width - 1; ++col) {
           float gradient_x = 0.0F;
           float gradient_y = 0.0F;
@@ -123,35 +121,36 @@ void BadanovASelectEdgeSobelSTL::ComputeGradientAtPixel(const std::vector<uint8_
 
 void BadanovASelectEdgeSobelSTL::ApplyThreshold(const std::vector<float> &magnitude, float max_magnitude,
                                                 std::vector<uint8_t> &output) const {
-  if (max_magnitude > 0.0F) {
-    const float scale = 255.0F / max_magnitude;
-    const size_t size = magnitude.size();
-    const int threshold = threshold_;
-
-    unsigned int num_threads = std::thread::hardware_concurrency();
-    if (num_threads == 0) {
-      num_threads = 2;
-    }
-
-    std::vector<std::thread> threads;
-    size_t chunk_size = (size + num_threads - 1) / num_threads;
-
-    for (unsigned int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
-      size_t start = thread_idx * chunk_size;
-      size_t end = (thread_idx == num_threads - 1) ? size : (start + chunk_size);
-
-      threads.emplace_back([&, start, end]() {
-        for (size_t i = start; i < end; ++i) {
-          output[i] = (magnitude[i] * scale > static_cast<float>(threshold)) ? 255 : 0;
-        }
-      });
-    }
-
-    for (auto &thread : threads) {
-      thread.join();
-    }
-  } else {
+  if (max_magnitude <= 0.0F) {
     std::ranges::fill(output, 0);
+    return;
+  }
+
+  const float scale = 255.0F / max_magnitude;
+  const size_t size = magnitude.size();
+  const int threshold = threshold_;
+
+  unsigned int num_threads = std::thread::hardware_concurrency();
+  if (num_threads == 0) {
+    num_threads = 2;
+  }
+
+  std::vector<std::thread> threads;
+  size_t chunk_size = (size + num_threads - 1) / num_threads;
+
+  for (unsigned int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+    size_t start = thread_idx * chunk_size;
+    size_t end = (thread_idx == num_threads - 1) ? size : (start + chunk_size);
+
+    threads.emplace_back([&, start, end]() {
+      for (size_t i = start; i < end; ++i) {
+        output[i] = (magnitude[i] * scale > static_cast<float>(threshold)) ? 255 : 0;
+      }
+    });
+  }
+
+  for (auto &thread : threads) {
+    thread.join();
   }
 }
 

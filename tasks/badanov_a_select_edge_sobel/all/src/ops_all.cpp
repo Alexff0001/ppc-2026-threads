@@ -53,8 +53,15 @@ void BadanovASelectEdgeSobelALL::ApplySobelOperator(const std::vector<uint8_t> &
   }
 
   int rows_per_process = (height - 2) / size_;
+  if (rows_per_process < 1) {
+    rows_per_process = 1;
+  }
+
   int start_row = 1 + (rank_ * rows_per_process);
-  int end_row = (rank_ == size_ - 1) ? (height - 1) : (start_row + rows_per_process);
+  int end_row = start_row + rows_per_process;
+  if (end_row > height - 1) {
+    end_row = height - 1;
+  }
 
   if (start_row >= end_row) {
     max_magnitude = 0.0F;
@@ -184,7 +191,25 @@ bool BadanovASelectEdgeSobelALL::RunImpl() {
   float global_max = 0.0F;
   MPI_Allreduce(&max_magnitude, &global_max, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);
 
-  ApplyThreshold(magnitude, global_max, output);
+  std::vector<float> global_magnitude;
+  if (rank_ == 0) {
+    global_magnitude.resize(magnitude.size());
+  }
+
+  std::vector<float> recv_buffer;
+  if (rank_ == 0) {
+    recv_buffer.resize(magnitude.size());
+  }
+
+  MPI_Reduce(magnitude.data(), recv_buffer.data(), magnitude.size(), MPI_FLOAT, MPI_MAX, 0, MPI_COMM_WORLD);
+
+  if (rank_ == 0) {
+    ApplyThreshold(recv_buffer, global_max, output);
+  } else {
+    ApplyThreshold(magnitude, global_max, output);
+  }
+
+  MPI_Bcast(output.data(), output.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
 
   return true;
 }

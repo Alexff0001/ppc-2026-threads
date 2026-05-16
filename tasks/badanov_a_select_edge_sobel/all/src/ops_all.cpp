@@ -181,7 +181,9 @@ bool BadanovASelectEdgeSobelALL::RunImpl() {
     return true;
   }
 
-  std::vector<float> magnitude(input.size(), 0.0F);
+  std::vector<float> magnitude;
+  magnitude.assign(input.size(), 0.0F);
+
   float max_magnitude = 0.0F;
 
   ApplySobelOperator(input, magnitude, max_magnitude);

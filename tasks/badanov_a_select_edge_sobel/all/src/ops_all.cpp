@@ -182,7 +182,7 @@ bool BadanovASelectEdgeSobelALL::RunImpl() {
   }
 
   std::vector<float> magnitude(input.size());
-  std::fill(magnitude.begin(), magnitude.end(), 0.0F);
+  std::ranges::fill(magnitude, 0.0F);
 
   float max_magnitude = 0.0F;
 
